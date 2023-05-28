@@ -7,12 +7,12 @@ const asyncHandler = require("express-async-handler");
 /**
  * @description Gets All the contacts
  * @route GET -> /api/contact
- * @access public
+ * @access private
 */
 // Get All the Data in the Collection
 const getAllContacts = asyncHandler(async (req, res) => {
 
-    const contacts = await Contact.find({});
+    const contacts = await Contact.find({ user_id: req.userClient.id.toString() });
 
     res.status(200).json({ message: "Get All Contacts", contacts: contacts });
 });
@@ -20,7 +20,7 @@ const getAllContacts = asyncHandler(async (req, res) => {
 /**
  * @description Create a new Contact
  * @route POST -> /api/contact
- * @access public
+ * @access private
 */
 // Create a new Contact and add to the collection
 const createContact = asyncHandler(async (req, res) => {
@@ -36,6 +36,7 @@ const createContact = asyncHandler(async (req, res) => {
         name,
         email,
         phone,
+        user_id: req.userClient.id.toString(),
     })
 
     res.status(201).json({ message: "Contact Created", contact: contact });
@@ -44,10 +45,10 @@ const createContact = asyncHandler(async (req, res) => {
 /**
  * @description Get a single contact with specific ID
  * @route GET -> /api/contact/:id
- * @access public
+ * @access private
 */
 // Get the Single Document in the Collection which has the /api/contact/:id ---> id
-const getUserByID = asyncHandler(async (req, res) => {
+const getContactByID = asyncHandler(async (req, res) => {
 
     const { id } = req.params
     const { name } = req.query
@@ -61,16 +62,21 @@ const getUserByID = asyncHandler(async (req, res) => {
         throw new Error("Contact Not Found!!!");
     }
 
-    res.status(200).json({ message: `Fetched Contact with ID: ${id}`, contact: contacts });
+    if (contacts.user_id.toString() !== req.userClient.id.toString()) {
+        res.status(403);
+        throw new Error("User DON'T have permission to see other Users' Contacts");
+    }
+
+    res.status(200).json({ message: `Fetched Contact with ID: ${id}`, contact: contacts, createdBy: req.userClient });
 });
 
 /**
  * @description Update a single contact with specific ID
  * @route PUT -> /api/contact/:id
- * @access public
+ * @access private
 */
 // Update the Single Document in the Collection which has the /api/contact/:id ---> id
-const updateUserByID = asyncHandler(async (req, res) => {
+const updateContactByID = asyncHandler(async (req, res) => {
 
     const { id } = req.params
 
@@ -79,6 +85,11 @@ const updateUserByID = asyncHandler(async (req, res) => {
     if (!contacts) {
         res.status(404);
         throw new Error("Contact Not Found!!!");
+    }
+
+    if (contacts.user_id.toString() !== req.userClient.id.toString()) {
+        res.status(403);
+        throw new Error("User DON'T have permission to update other Users' Contacts");
     }
 
     const updatedContact = await Contact.findOneAndUpdate(
@@ -87,16 +98,16 @@ const updateUserByID = asyncHandler(async (req, res) => {
         { new: true },  // Should return the new Document after Updation is done.
     )
 
-    res.status(200).json({ message: `Updated Contact with ID: ${id}`, contact: updatedContact });
+    res.status(200).json({ message: `Updated Contact with ID: ${id}`, contact: updatedContact, updatedBy: req.userClient });
 });
 
 /**
  * @description Delete a single contact with specific ID
  * @route DELETE -> /api/contact/:id
- * @access public
+ * @access private
 */
 // Delete the Single Document in the Collection which has the /api/contact/:id ---> id
-const deleteUserByID = asyncHandler(async (req, res) => {
+const deleteContactByID = asyncHandler(async (req, res) => {
 
     const { id } = req.params
 
@@ -107,18 +118,23 @@ const deleteUserByID = asyncHandler(async (req, res) => {
         throw new Error("Contact Not Found!!!");
     }
 
+    if (contacts.user_id.toString() !== req.userClient.id.toString()) {
+        res.status(403);
+        throw new Error("User DON'T have permission to delete other Users' Contacts");
+    }
+
     const deletedContact = await Contact.findOneAndRemove(
         { _id: id }    // Deletion Filter
     )
 
-    res.status(200).json({ message: `Deleted Contact with ID: ${id}`, contact: deletedContact });
+    res.status(200).json({ message: `Deleted Contact with ID: ${id}`, contact: deletedContact, deletedBy: req.userClient });
 });
 
 // Exports out All the Controllers
 module.exports = {
     getAllContacts,
     createContact,
-    getUserByID,
-    updateUserByID,
-    deleteUserByID,
+    getContactByID,
+    updateContactByID,
+    deleteContactByID,
 }
