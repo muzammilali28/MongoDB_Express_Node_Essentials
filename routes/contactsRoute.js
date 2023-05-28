@@ -1,23 +1,27 @@
 const express = require('express');
+const validateToken = require('../middlewares/jwtValidTokenHandler')
 const router = express.Router();
 
 const {
     getAllContacts,
     createContact,
-    getUserByID,
-    updateUserByID,
-    deleteUserByID
+    getContactByID,
+    updateContactByID,
+    deleteContactByID
 } = require("../controllers/contactControllers");
 
+// Using this Middleware above all the controllers will make sure each
+// and evey route/controller is protected via this middleware.
+router.use(validateToken);
 
 router.route("/")
     .get(getAllContacts)
     .post(createContact)
 
 router.route("/:id")
-    .get(getUserByID)
-    .put(updateUserByID)
-    .delete(deleteUserByID)
+    .get(getContactByID)
+    .put(updateContactByID)
+    .delete(deleteContactByID)
 
 module.exports = router;
 
